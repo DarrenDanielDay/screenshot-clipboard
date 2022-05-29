@@ -2,13 +2,22 @@
   "name": "screenshot-clipboard",
   "displayName": "Screenshot Clipboard",
   "description": "Clipboard tooling for screenshots.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "engines": {
     "vscode": "^1.60.0"
   },
   "categories": [
     "Other"
   ],
+  "publisher": "DarrenDanielDay",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DarrenDanielDay/screenshot-clipboard"
+  },
+  "author": {
+    "email": "Darren_Daniel_Day@hotmail.com",
+    "name": "DarrenDanielDay"
+  },
   "activationEvents": [
     "onCommand:screenshot-clipboard.open-webview",
     "onCommand:screenshot-clipboard.pick-image"
@@ -49,7 +58,6 @@
   "devDependencies": {
     "@types/crypto-js": "^4.1.1",
     "@types/glob": "^7.1.3",
-    "@types/mocha": "^8.0.4",
     "@types/node": "^17.0.36",
     "@types/vscode": "^1.60.0",
     "@typescript-eslint/eslint-plugin": "^4.14.1",
@@ -57,10 +65,8 @@
     "esbuild": "^0.14.41",
     "eslint": "^7.19.0",
     "glob": "^7.1.6",
-    "mocha": "^8.2.1",
     "typescript": "^4.1.3",
-    "vsce": "^2.8.0",
-    "vscode-test": "^1.5.0"
+    "vsce": "^2.8.0"
   },
   "dependencies": {
     "@emotion/react": "^11.9.0",
