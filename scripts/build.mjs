@@ -35,7 +35,7 @@ const fakeLog = () =>
 // Build extension
 esbuild.build({
   ...commonConfig,
-  entryPoints: ["./src/extension.cts"],
+  entryPoints: ["./src/extension.ts"],
   loader: {
     ".cts": "ts",
   },
