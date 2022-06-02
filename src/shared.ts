@@ -9,6 +9,7 @@ declare global {
   var __EXTENSION__: string;
   var __CONFIGURATION__: string;
   var __ROOT__: string;
+  var __APP_BUNDLE__: string;
   //#endregion
 }
 

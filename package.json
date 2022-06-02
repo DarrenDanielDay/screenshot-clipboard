@@ -23,7 +23,7 @@
     "onCommand:screenshot-clipboard.pick-image"
   ],
   "main": "./out/extension.js",
-  "browser": "./out/extension.js",
+  "browser": "./out/browser.js",
   "contributes": {
     "commands": [
       {
@@ -65,7 +65,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "node ./scripts/build.mjs --prod",
+    "compile": "node ./scripts/build.mjs --prod --experimental-import-meta-resolve",
     "watch": "node ./scripts/build.mjs --watch",
     "lint": "eslint src --ext ts",
     "bundle": "vsce package",
@@ -91,6 +91,7 @@
     "@emotion/styled": "^11.8.1",
     "@mui/material": "^5.8.1",
     "crypto-js": "^4.1.1",
+    "path-browserify": "^1.0.1",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
     "rxjs": "^7.5.5",

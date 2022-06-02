@@ -30,7 +30,7 @@ import * as React from "react";
 import { UI } from "./app";
 import { die } from "taio/build/utils/internal/exceptions";
 import path from "path";
-
+const appBundle = __APP_BUNDLE__ ? __APP_BUNDLE__ : void 0;
 const useExtensionDestroy = (context: vscode.ExtensionContext) => {
   const { destroy, destroy$ } = useDestroy();
   context.subscriptions.push({
@@ -77,7 +77,7 @@ const useCommand = (context: vscode.ExtensionContext, command: string, handler: 
   context.subscriptions.push(subscription);
 };
 
-const createSSRWebviewPanel = (context: vscode.ExtensionContext, app: React.ComponentType) => {
+const createCSRWebviewPanel = (context: vscode.ExtensionContext) => {
   const { destroy, destroy$ } = useDestroy();
   const webRoot = vscode.Uri.joinPath(context.extensionUri, __ROOT__);
   const panel = vscode.window.createWebviewPanel(
@@ -93,8 +93,12 @@ const createSSRWebviewPanel = (context: vscode.ExtensionContext, app: React.Comp
   );
   panel.onDidDispose(destroy);
   const { webview } = panel;
-  webview.html = `<div id="root">${ReactDomServer.renderToString(React.createElement(app))}</div>\
-<script src="${webview.asWebviewUri(vscode.Uri.joinPath(webRoot, "app.js"))}"></script>`;
+  webview.html = `\
+${
+  appBundle
+    ? `<script>${appBundle}</script>`
+    : `<script src="${webview.asWebviewUri(vscode.Uri.joinPath(webRoot, "app.js"))}"></script>`
+}`;
   return { panel, destroy$ };
 };
 
@@ -124,7 +128,7 @@ export function activate(context: vscode.ExtensionContext) {
   const panel$ = showWebview$.pipe(
     distinctUntilChanged(),
     filter(Boolean),
-    map(() => createSSRWebviewPanel(context, UI))
+    map(() => createCSRWebviewPanel(context))
   );
   panel$.pipe(takeUntil(extensionDestroy$)).subscribe(({ destroy$, panel }) => {
     // event sources
