@@ -193,7 +193,7 @@ export function activate(context: vscode.ExtensionContext) {
         const bytes = (() => {
           switch (__PLATFORM__) {
             case "browser":
-              const binaryString = window.atob(base64);
+              const binaryString = globalThis.atob(base64);
               return new Uint8Array([...binaryString].map((char) => char.charCodeAt(0)));
             case "desktop":
             default:
