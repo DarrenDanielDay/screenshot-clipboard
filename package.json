@@ -2,7 +2,7 @@
   "name": "screenshot-clipboard",
   "displayName": "Screenshot Clipboard",
   "description": "Clipboard tooling for screenshots.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "engines": {
     "vscode": "^1.60.0"
   },
