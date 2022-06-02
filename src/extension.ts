@@ -190,7 +190,16 @@ export function activate(context: vscode.ExtensionContext) {
         if (!(saveDir instanceof vscode.Uri)) {
           return;
         }
-        const bytes = Buffer.from(base64, "base64");
+        const bytes = (() => {
+          switch (__PLATFORM__) {
+            case "browser":
+              const binaryString = window.atob(base64);
+              return new Uint8Array([...binaryString].map((char) => char.charCodeAt(0)));
+            case "desktop":
+            default:
+              return globalThis.Buffer.from(base64, "base64");
+          }
+        })();
         try {
           const targetUri = vscode.Uri.joinPath(saveDir, fileName);
           browserDebug(`Trying to use file system in browser: uri = ${targetUri.toString()}`);
