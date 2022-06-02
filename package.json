@@ -2,7 +2,7 @@
   "name": "screenshot-clipboard",
   "displayName": "Screenshot Clipboard",
   "description": "Clipboard tooling for screenshots.",
-  "version": "0.1.7-browser-debug",
+  "version": "0.1.7",
   "engines": {
     "vscode": "^1.60.0"
   },
@@ -65,7 +65,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "node ./scripts/build.mjs --prod --experimental-import-meta-resolve",
+    "compile": "node ./scripts/build.mjs --prod",
     "watch": "node ./scripts/build.mjs --watch",
     "lint": "eslint src --ext ts",
     "bundle": "vsce package",
