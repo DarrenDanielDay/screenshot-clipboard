@@ -14,7 +14,6 @@ import {
 } from "rxjs";
 import { TypedObject } from "taio/build/libs/typescript/object";
 import * as vscode from "vscode";
-import { createHmac } from "crypto";
 import { ExtensionMessage, ExtensionConfiguration, isConfiguration, WebviewMessage, useDestroy } from "./shared";
 import * as ReactDomServer from "react-dom/server";
 import * as React from "react";
@@ -50,7 +49,7 @@ const useCommand = (context: vscode.ExtensionContext, command: string, handler: 
   context.subscriptions.push(subscription);
 };
 
-const createWebviewPanel = (context: vscode.ExtensionContext) => {
+const createSSRWebviewPanel = (context: vscode.ExtensionContext, app: React.ComponentType) => {
   const { destroy, destroy$ } = useDestroy();
   const webRoot = vscode.Uri.joinPath(context.extensionUri, __ROOT__);
   const panel = vscode.window.createWebviewPanel(
@@ -66,7 +65,7 @@ const createWebviewPanel = (context: vscode.ExtensionContext) => {
   );
   panel.onDidDispose(destroy);
   const { webview } = panel;
-  webview.html = `<div id="root">${ReactDomServer.renderToString(React.createElement(UI))}</div>\
+  webview.html = `<div id="root">${ReactDomServer.renderToString(React.createElement(app))}</div>\
 <script src="${webview.asWebviewUri(vscode.Uri.joinPath(webRoot, "app.js"))}"></script>`;
   return { panel, destroy$ };
 };
@@ -85,7 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
   const panel$ = showWebview$.pipe(
     distinctUntilChanged(),
     filter(Boolean),
-    map(() => createWebviewPanel(context))
+    map(() => createSSRWebviewPanel(context, UI))
   );
   panel$.pipe(takeUntil(extensionDestroy$)).subscribe(({ destroy$, panel }) => {
     // event sources
@@ -132,7 +131,6 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
         const bytes = Buffer.from(base64, "base64");
-        fileName ??= createHmac("sha256", __EXTENSION__).update(bytes).digest().toString("hex");
         await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(saveDir, fileName), bytes);
       });
     // toast

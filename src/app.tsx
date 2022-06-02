@@ -3,10 +3,12 @@ import { Box } from "@mui/system";
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
 import {
+  catchError,
   combineLatest,
   EMPTY,
   filter,
   firstValueFrom,
+  from,
   fromEvent,
   identity,
   map,
@@ -38,22 +40,23 @@ const sendMessage = (message: WebviewMessage) => {
   vscodeApi.postMessage(message);
 };
 
-const readClipboard = async () => {
-  const items = await navigator.clipboard.read();
+const readClipboardImage = async () => {
+  const items = await (async () => {
+    try {
+      return await navigator.clipboard.read();
+    } catch (error) {
+      return die(/* TODO i18n */ `\
+Failed to read clipboard. Please make sure you have allowed vscode to access clipboard \
+and check whether the content format can be pasted into webview.`);
+    }
+  })();
   const item = items[0];
   if (!item) {
-    return die();
+    return die(/* TODO i18n */ "No clipboard item found.");
   }
   const mimeType = item.types[0];
   if (!mimeType?.match(/^image\//)) {
-    sendMessage({
-      type: "toast",
-      data: {
-        type: "warning",
-        message: /* TODO i18n */ `Not supported MIME type: ${mimeType}`,
-      },
-    });
-    return die();
+    return die(/* TODO i18n */ `Unsupported MIME type: ${mimeType}`);
   }
   const blob = await item.getType(mimeType);
   const url = URL.createObjectURL(blob);
@@ -71,7 +74,7 @@ const readClipboard = async () => {
   };
   return result;
 };
-type ImagePasteItem = Awaited<ReturnType<typeof readClipboard>>;
+type ImagePasteItem = Awaited<ReturnType<typeof readClipboardImage>>;
 const ConfigurationContext = React.createContext(defaultConfiguration);
 const ExtensionMessageContext = React.createContext({
   message$: identity<Observable<ExtensionMessage>>(new Subject()),
@@ -131,20 +134,24 @@ const PasteImage: React.FC = () => {
     const { readImageSignal$, saveWith$ } = pasteImageService.current;
     const clipboardImage$ = readImageSignal$.pipe(
       takeUntil(destroy$),
-      mergeMap(async () => {
-        try {
-          return await readClipboard();
-        } catch (error) {
-          return false as const;
-        }
-      })
+      mergeMap(() =>
+        from(readClipboardImage()).pipe(
+          catchError((err) => {
+            if (err instanceof Error) {
+              sendMessage({
+                type: "toast",
+                data: {
+                  type: "error",
+                  message: err.message,
+                },
+              });
+            }
+            return EMPTY;
+          })
+        )
+      )
     );
-    clipboardImage$.subscribe((res) => {
-      if (!res) {
-        return;
-      }
-      setPasteItem(res);
-    });
+    clipboardImage$.subscribe(setPasteItem);
     const keydown$ = fromEvent(document, "keydown").pipe(
       mergeMap((e) => (e instanceof KeyboardEvent ? of(e) : EMPTY)),
       takeUntil(destroy$)
