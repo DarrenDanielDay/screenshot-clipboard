@@ -37,11 +37,9 @@ const commonConfig = {
     __APP_BUNDLE__: "",
     "process.env.NODE_ENV": __DEV__ ? "development" : "production",
   }),
-  // minify: !__DEV__,
+  minify: !__DEV__,
   outdir: __ROOT__,
-  // sourcemap: __DEV__,
-  minify: false /** for browser debug */,
-  sourcemap: "both" /** for browser debug */,
+  sourcemap: __DEV__,
   treeShaking: !__DEV__,
 };
 const fakeLog = () =>

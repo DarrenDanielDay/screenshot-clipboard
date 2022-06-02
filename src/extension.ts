@@ -109,16 +109,6 @@ const generalErrorHandle = <T extends unknown>(): OperatorFunction<T, T> => {
 };
 
 export function activate(context: vscode.ExtensionContext) {
-  const output = vscode.window.createOutputChannel(__EXTENSION__);
-  const browserDebug = (msg: string, err?: unknown) => {
-    if (__PLATFORM__ === "browser") {
-      output.appendLine(msg);
-      if (err instanceof Error) {
-        output.appendLine(err.message);
-        output.appendLine(err.stack ?? "(no stack info)");
-      }
-    }
-  };
   const possibleWorkspace = vscode.workspace.workspaceFolders?.[0]?.uri;
   const shortCommands = {
     open: "open-webview",
@@ -150,7 +140,6 @@ export function activate(context: vscode.ExtensionContext) {
     combineLatest([configuration$, webviewMessage$.pipe(filter((m) => m.type === "fetch-all"))])
       .pipe(takeUntil(destroy$))
       .subscribe(([configuration]) => {
-        browserDebug("config updated");
         sendMessage({
           type: "configuration",
           data: configuration,
@@ -169,24 +158,15 @@ export function activate(context: vscode.ExtensionContext) {
         takeUntil(destroy$)
       )
       .subscribe(async ({ config, message: { base64, fileName } }) => {
-        browserDebug(`save with workspace: ${possibleWorkspace?.toString() ?? "no wokrspace folder"}`);
-        browserDebug(JSON.stringify(config));
-        const saveDir = await (async () => {
-          try {
-            return possibleWorkspace
-              ? vscode.Uri.joinPath(possibleWorkspace, config.saveDir)
-              : await vscode.window.showOpenDialog({
-                  canSelectFiles: false,
-                  canSelectMany: false,
-                  canSelectFolders: true,
-                  // TODO: i18n
-                  title: "select a folder to save",
-                });
-          } catch (error) {
-            browserDebug(`failed to get saveDir`, error);
-            return undefined;
-          }
-        })();
+        const saveDir = possibleWorkspace
+          ? vscode.Uri.joinPath(possibleWorkspace, config.saveDir)
+          : await vscode.window.showOpenDialog({
+              canSelectFiles: false,
+              canSelectMany: false,
+              canSelectFolders: true,
+              // TODO: i18n
+              title: "select a folder to save",
+            });
         if (!(saveDir instanceof vscode.Uri)) {
           return;
         }
@@ -194,19 +174,14 @@ export function activate(context: vscode.ExtensionContext) {
           switch (__PLATFORM__) {
             case "browser":
               const binaryString = globalThis.atob(base64);
-              return new Uint8Array([...binaryString].map((char) => char.charCodeAt(0)));
+              return Uint8Array.from(binaryString, (char) => char.charCodeAt(0));
             case "desktop":
             default:
               return globalThis.Buffer.from(base64, "base64");
           }
         })();
-        try {
-          const targetUri = vscode.Uri.joinPath(saveDir, fileName);
-          browserDebug(`Trying to use file system in browser: uri = ${targetUri.toString()}`);
-          await vscode.workspace.fs.writeFile(targetUri, bytes);
-        } catch (error) {
-          browserDebug(`Failed to write`, error);
-        }
+        const targetUri = vscode.Uri.joinPath(saveDir, fileName);
+        await vscode.workspace.fs.writeFile(targetUri, bytes);
       });
     // toast
     webviewMessage$
