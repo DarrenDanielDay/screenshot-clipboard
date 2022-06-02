@@ -5,4 +5,4 @@ src/**
 .gitignore
 **/tsconfig.json
 **/.eslintrc.json
-**/*.map
+# **/*.map

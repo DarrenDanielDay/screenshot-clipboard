@@ -30,15 +30,18 @@ const commonConfig = {
   bundle: true,
   define: defineObject({
     __DEV__,
+    __PLATFORM__: "desktop",
     __EXTENSION__,
     __ROOT__,
     __CONFIGURATION__,
     __APP_BUNDLE__: "",
     "process.env.NODE_ENV": __DEV__ ? "development" : "production",
   }),
-  minify: !__DEV__,
+  // minify: !__DEV__,
   outdir: __ROOT__,
-  sourcemap: __DEV__,
+  // sourcemap: __DEV__,
+  minify: false /** for browser debug */,
+  sourcemap: "both" /** for browser debug */,
   treeShaking: !__DEV__,
 };
 const fakeLog = () =>
@@ -51,7 +54,7 @@ const extensionBuildOptions = {
   loader: {
     ".cts": "ts",
   },
-  format: 'cjs',
+  format: "cjs",
   platform: "node",
   external: ["vscode"],
   watch: watch && {
@@ -90,6 +93,7 @@ if (__DEV__) {
       ...extensionBuildOptions.define,
       ...defineObject({
         __APP_BUNDLE__: appBundle,
+        __PLATFORM__: "browser",
       }),
     },
     outdir: undefined,
@@ -103,7 +107,7 @@ if (__DEV__) {
               filter: /^path$/,
             },
             async () => {
-              const polyfillPath = path.resolve("node_modules", "path-browserify", "package.json");
+              const polyfillPath = path.resolve("node_modules", "path-browserify", "index.js");
               return {
                 path: polyfillPath,
               };

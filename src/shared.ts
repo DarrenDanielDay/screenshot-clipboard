@@ -6,6 +6,7 @@ import { createValidatorBySchema } from "taio/build/utils/json/schema/validator-
 declare global {
   //#region Environment variables defined by `esbuild`
   var __DEV__: boolean;
+  var __PLATFORM__: "desktop" | "browser";
   var __EXTENSION__: string;
   var __CONFIGURATION__: string;
   var __ROOT__: string;
