@@ -18,10 +18,21 @@ type MessageOf<Map> = {
     data: Map[K];
   };
 }[keyof Map];
-
+export enum ImageLinkFormat {
+  Auto = "detect by file",
+  Image = "image element",
+  Markdown = "markdown",
+}
 const configSchema = defineSchema({
   type: "object",
   fields: {
+    insertAbsolute: {
+      type: "boolean",
+    },
+    linkFormat: {
+      type: "enum",
+      enumObject: ImageLinkFormat,
+    },
     saveDir: {
       type: "string",
     },
@@ -31,6 +42,8 @@ const configSchema = defineSchema({
 export type ExtensionConfiguration = CreateTypeBySchemaType<typeof configSchema>;
 export const isConfiguration = createValidatorBySchema(configSchema);
 export const defaultConfiguration: ExtensionConfiguration = {
+  insertAbsolute: false,
+  linkFormat: ImageLinkFormat.Auto,
   saveDir: "assets",
 };
 interface ExtensionMessages {

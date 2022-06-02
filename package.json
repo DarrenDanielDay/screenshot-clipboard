@@ -39,6 +39,21 @@
       {
         "title": "Screenshot Clipboard",
         "properties": {
+          "screenshot-clipboard.configs.insertAbsolute": {
+            "description": "Whether to use absolute path when insert image link. When set to `true`, the workspace root folder is regarded as `/`.",
+            "default": false,
+            "type": "boolean"
+          },
+          "screenshot-clipboard.configs.linkFormat": {
+            "description": "The format for image link insertion.",
+            "default": "detect by file",
+            "type": "string",
+            "enum": [
+              "detect by file",
+              "image element",
+              "markdown"
+            ]
+          },
           "screenshot-clipboard.configs.saveDir": {
             "description": "A relative folder path to workspace folder for screenshot files.",
             "default": "assets",

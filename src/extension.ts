@@ -1,11 +1,14 @@
 import {
+  catchError,
   combineLatest,
   distinctUntilChanged,
   EMPTY,
   filter,
   map,
   mergeMap,
+  Observable,
   of,
+  OperatorFunction,
   ReplaySubject,
   Subject,
   switchMap,
@@ -14,10 +17,19 @@ import {
 } from "rxjs";
 import { TypedObject } from "taio/build/libs/typescript/object";
 import * as vscode from "vscode";
-import { ExtensionMessage, ExtensionConfiguration, isConfiguration, WebviewMessage, useDestroy } from "./shared";
+import {
+  ExtensionMessage,
+  ExtensionConfiguration,
+  isConfiguration,
+  WebviewMessage,
+  useDestroy,
+  ImageLinkFormat,
+} from "./shared";
 import * as ReactDomServer from "react-dom/server";
 import * as React from "react";
 import { UI } from "./app";
+import { die } from "taio/build/utils/internal/exceptions";
+import path from "path";
 
 const useExtensionDestroy = (context: vscode.ExtensionContext) => {
   const { destroy, destroy$ } = useDestroy();
@@ -27,7 +39,7 @@ const useExtensionDestroy = (context: vscode.ExtensionContext) => {
   return destroy$;
 };
 
-const useConfiguration = () => {
+const useConfiguration = (context: vscode.ExtensionContext): Observable<ExtensionConfiguration> => {
   const configuration$ = new ReplaySubject<ExtensionConfiguration>(1);
   const notifyConfig = () => {
     const vscodeConfig = vscode.workspace.getConfiguration(__CONFIGURATION__);
@@ -35,13 +47,29 @@ const useConfiguration = () => {
       configuration$.next(vscodeConfig);
     }
   };
-  vscode.workspace.onDidChangeConfiguration((e) => {
+  const disposable = vscode.workspace.onDidChangeConfiguration((e) => {
     if (e.affectsConfiguration(__EXTENSION__)) {
       notifyConfig();
     }
   });
+  context.subscriptions.push(disposable);
   notifyConfig();
   return configuration$;
+};
+
+const useLastActiveTextEditor = (context: vscode.ExtensionContext): Observable<vscode.TextEditor> => {
+  const activeEditor$ = new ReplaySubject<vscode.TextEditor>(1);
+  const disposable = vscode.window.onDidChangeActiveTextEditor((e) => {
+    if (e) {
+      activeEditor$.next(e);
+    }
+  });
+  const currentActiveEditor = vscode.window.activeTextEditor;
+  if (currentActiveEditor) {
+    activeEditor$.next(currentActiveEditor);
+  }
+  context.subscriptions.push(disposable);
+  return activeEditor$;
 };
 
 const useCommand = (context: vscode.ExtensionContext, command: string, handler: () => void) => {
@@ -70,7 +98,17 @@ const createSSRWebviewPanel = (context: vscode.ExtensionContext, app: React.Comp
   return { panel, destroy$ };
 };
 
+const generalErrorHandle = <T extends unknown>(): OperatorFunction<T, T> => {
+  return catchError((e) => {
+    if (e instanceof Error && e.message) {
+      vscode.window.showErrorMessage(e.message);
+    }
+    return EMPTY;
+  });
+};
+
 export function activate(context: vscode.ExtensionContext) {
+  const possibleWorkspace = vscode.workspace.workspaceFolders?.[0]?.uri;
   const shortCommands = {
     open: "open-webview",
     pickImage: "pick-image",
@@ -79,7 +117,9 @@ export function activate(context: vscode.ExtensionContext) {
     TypedObject.entries(shortCommands).map(([k, v]) => [k, `${__EXTENSION__}.${v}`] as const)
   );
   const extensionDestroy$ = useExtensionDestroy(context);
-  const configuration$ = useConfiguration();
+  const configuration$ = useConfiguration(context);
+  const editor$ = useLastActiveTextEditor(context);
+  //#region webview
   const showWebview$ = new Subject<boolean>();
   const panel$ = showWebview$.pipe(
     distinctUntilChanged(),
@@ -117,7 +157,6 @@ export function activate(context: vscode.ExtensionContext) {
         takeUntil(destroy$)
       )
       .subscribe(async ({ config, message: { base64, fileName } }) => {
-        const possibleWorkspace = vscode.workspace.workspaceFolders?.[0]?.uri;
         const saveDir = possibleWorkspace
           ? vscode.Uri.joinPath(possibleWorkspace, config.saveDir)
           : await vscode.window.showOpenDialog({
@@ -162,8 +201,94 @@ export function activate(context: vscode.ExtensionContext) {
     });
     //#endregion
   });
+  type ImageLinkCtx = {
+    src: string;
+    name: string;
+  };
+
+  //#endregion
+
+  //#region pick image
+  const getImage = (ctx: ImageLinkCtx) => new vscode.SnippetString(`<img src="${ctx.src}" alt=${ctx.name} />$0`);
+  const getMarkdown = (ctx: ImageLinkCtx) => new vscode.SnippetString(`![${ctx.name}](${ctx.src})`);
+  const normalizeUrlFriendlyRelativePath = (p: string) => {
+    const slashReplaced = p.replace(/\\/g, "/");
+    const alwaysRelative = slashReplaced.match(/\.\.?\//) ? slashReplaced : `./${slashReplaced}`;
+    return alwaysRelative;
+  };
+  const insert$ = new Subject<void>();
+  const insertEditor$ = insert$.pipe(switchMap(() => editor$.pipe(take(1))));
+  insertEditor$
+    .pipe(
+      switchMap((editor) =>
+        configuration$.pipe(
+          take(1),
+          map((config) => ({ config, editor })),
+          switchMap(async (ctx) => {
+            if (!possibleWorkspace) {
+              return die(/* TODO i18n */ "Please open a folder/workspace first.");
+            }
+            const imageDir = vscode.Uri.joinPath(possibleWorkspace, ctx.config.saveDir);
+            const childList = await vscode.workspace.fs.readDirectory(imageDir);
+            const files = childList.flatMap(([name, type]) => (type === vscode.FileType.File ? [name] : []));
+            if (!files.length) {
+              return die(/* TODO i18n */ "No file found.");
+            }
+            const result = await vscode.window.showQuickPick(files, {
+              title: /* TODO i18n */ "Select a file to insert",
+              canPickMany: false,
+            });
+            if (!result) {
+              return die();
+            }
+            const imageFile = vscode.Uri.joinPath(imageDir, result);
+            return {
+              ...ctx,
+              imageFile,
+              workspaceUri: possibleWorkspace,
+            };
+          }),
+          generalErrorHandle()
+        )
+      ),
+      takeUntil(extensionDestroy$)
+    )
+    .subscribe(({ config: { insertAbsolute, linkFormat }, editor, workspaceUri, imageFile }) => {
+      const docPath = editor.document.uri.path;
+      const { ext: docExt, dir: docFolderPath } = path.parse(docPath);
+      const imgPath = imageFile.path;
+      const { base: imgFileName } = path.parse(imgPath);
+      const src = insertAbsolute
+        ? normalizeUrlFriendlyRelativePath(path.relative(workspaceUri.path, imgPath)).slice(1)
+        : normalizeUrlFriendlyRelativePath(path.relative(docFolderPath, imgPath));
+      const snippet = (() => {
+        const ctx: ImageLinkCtx = {
+          src,
+          name: imgFileName,
+        };
+        switch (linkFormat) {
+          case ImageLinkFormat.Image:
+            return getImage(ctx);
+          case ImageLinkFormat.Markdown:
+            return getMarkdown(ctx);
+          default:
+            switch (docExt) {
+              case ".html":
+                return getImage(ctx);
+              case ".md":
+              case ".markdown":
+                return getMarkdown(ctx);
+              default:
+                return new vscode.SnippetString(src);
+            }
+        }
+      })();
+      editor.insertSnippet(snippet);
+    });
+  //#endregion
 
   useCommand(context, fullCommands.open, () => showWebview$.next(true));
+  useCommand(context, fullCommands.pickImage, () => insert$.next());
 }
 
 export function deactivate() {}
