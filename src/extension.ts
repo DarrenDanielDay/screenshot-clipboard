@@ -25,9 +25,6 @@ import {
   useDestroy,
   ImageLinkFormat,
 } from "./shared";
-import * as ReactDomServer from "react-dom/server";
-import * as React from "react";
-import { UI } from "./app";
 import { die } from "taio/build/utils/internal/exceptions";
 import path from "path";
 const appBundle = __APP_BUNDLE__ ? __APP_BUNDLE__ : void 0;

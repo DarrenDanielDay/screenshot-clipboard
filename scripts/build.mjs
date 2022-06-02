@@ -51,6 +51,7 @@ const extensionBuildOptions = {
   loader: {
     ".cts": "ts",
   },
+  format: 'cjs',
   platform: "node",
   external: ["vscode"],
   watch: watch && {
