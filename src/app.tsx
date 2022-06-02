@@ -61,7 +61,9 @@ and check whether the content format can be pasted into webview.`);
   const blob = await item.getType(mimeType);
   const url = URL.createObjectURL(blob);
   const bytes = new Uint8Array(await blob.arrayBuffer());
-  const raw = String.fromCharCode.apply(null, bytes as Iterable<number> as number[]);
+  const chars = new Array<string>(bytes.length);
+  bytes.forEach((byte, i) => (chars[i] = String.fromCharCode(byte)));
+  const raw = chars.join("");
   const ext = mimeType.match(/\/([a-z]+)$/i)?.[1] ?? "png";
   const sha256 = hmacsha256(raw, __EXTENSION__).toString();
   const result = {
