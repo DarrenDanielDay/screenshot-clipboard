@@ -6,6 +6,13 @@ Clipboard tooling for screenshots. Designed for attaching screenshot images to m
 
 > This extension is available in [Visual Studio for the Web](https://vscode.dev).
 
+Commands:
+
+- `Screenshot Clipboard: Open Webview`
+- `Screenshot Clipboard: Pick Image`
+
+You can open the command palette with `F1` or `Ctrl + Shift + P` (`⇧ + ⌘ + P` for MacOS).
+
 ### Paste Clipboard Screenshot Image
 
 
