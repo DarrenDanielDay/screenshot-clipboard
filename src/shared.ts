@@ -1,5 +1,5 @@
 import { Subject } from "rxjs";
-import { CreateTypeBySchemaType } from "taio/build/utils/json/interfaces/json-describer";
+import type { CreateTypeBySchemaType } from "taio/build/utils/json/interfaces/json-describer";
 import { defineSchema } from "taio/build/utils/json/schema/schema-factory";
 import { createValidatorBySchema } from "taio/build/utils/json/schema/validator-factory";
 

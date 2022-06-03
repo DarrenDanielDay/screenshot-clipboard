@@ -1,4 +1,4 @@
-import { Button, colors, createTheme, FormGroup, TextField, ThemeProvider, Typography, useTheme } from "@mui/material";
+import { Button, colors, createTheme, TextField, ThemeProvider, Typography, useTheme } from "@mui/material";
 import { Box } from "@mui/system";
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
@@ -13,15 +13,14 @@ import {
   identity,
   map,
   mergeMap,
-  mergeScan,
   noop,
-  Observable,
+  type Observable,
   of,
   Subject,
   takeUntil,
 } from "rxjs";
 import { die } from "taio/build/utils/internal/exceptions";
-import { defaultConfiguration, ExtensionMessage, useDestroy, WebviewMessage } from "./shared";
+import { defaultConfiguration, type ExtensionMessage, useDestroy, type WebviewMessage } from "./shared";
 import hmacsha256 from "crypto-js/hmac-sha256";
 // Only available in webview and can be only called once.
 declare const acquireVsCodeApi:
