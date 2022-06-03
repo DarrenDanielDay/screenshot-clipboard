@@ -9,6 +9,17 @@
   "categories": [
     "Other"
   ],
+  "keywords": [
+    "clipboard",
+    "paste",
+    "paste screenshot",
+    "markdown link",
+    "image link",
+    "web extension",
+    "vscode.dev",
+    "webviews example",
+    "react example"
+  ],
   "publisher": "DarrenDanielDay",
   "repository": {
     "type": "git",
