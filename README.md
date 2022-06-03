@@ -4,7 +4,7 @@ Clipboard tooling for screenshots. Designed for attaching screenshot images to m
 
 ## Features
 
-> This extension is available in [Visual Studio for the Web](https://vscode.dev).
+> This extension is also available in [Visual Studio for the Web](https://vscode.dev).
 
 Commands:
 
@@ -15,11 +15,11 @@ You can open the command palette with `F1` or `Ctrl + Shift + P` (`⇧ + ⌘ + P
 
 ### Paste Clipboard Screenshot Image
 
-
+![paste.gif](./assets/paste.gif)
 
 ### Insert Image Link
 
-
+![insert-link.gif](./assets/insert-link.gif)
 
 ## Requirements
 
