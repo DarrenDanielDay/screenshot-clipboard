@@ -1,4 +1,12 @@
-import { Button, colors, createTheme, TextField, ThemeProvider, Typography, useTheme } from "@mui/material";
+import {
+  Button,
+  createTheme,
+  PaletteColorOptions,
+  TextField,
+  ThemeProvider,
+  Typography,
+  useTheme,
+} from "@mui/material";
 import { Box } from "@mui/system";
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
@@ -20,7 +28,7 @@ import {
   takeUntil,
 } from "rxjs";
 import { die } from "taio/build/utils/internal/exceptions";
-import { defaultConfiguration, type ExtensionMessage, useDestroy, type WebviewMessage } from "./shared";
+import { defaultConfiguration, type ExtensionMessage, useDestroy, type WebviewMessage, ThemeType } from "./shared";
 import hmacsha256 from "crypto-js/hmac-sha256";
 // Only available in webview and can be only called once.
 declare const acquireVsCodeApi:
@@ -204,7 +212,7 @@ const PasteImage: React.FC = () => {
   const imageBlockStyle: React.CSSProperties = {
     width: theme.spacing(50),
     height: theme.spacing(50),
-    border: `2px dashed ${colors.grey[500]}`,
+    border: `${theme.spacing(0.5)} dashed ${theme.palette.divider}`,
     ...centerStyle,
   };
   return (
@@ -223,14 +231,11 @@ const PasteImage: React.FC = () => {
       )}
       <Box style={centerStyle}>
         <TextField ref={nameRef} label={/* TODO i18n */ "save name"} variant="standard" {...saveNameControl.control} />
-        <Button color="primary" type="submit" onClick={handleSave}>
+        <Button color="primary" variant="contained" type="submit" onClick={handleSave}>
           {/* TODO i18n */ "save"}
         </Button>
-        <Button type="reset" color="error" onClick={handleCleanBoard}>
-          {/* TODO i18n */ "clean"}
-        </Button>
-        <Button type="button" color="secondary" onClick={handlePaste}>
-          {/* TODO i18n */ "paste"}
+        <Button color="secondary" variant="contained" type="reset" onClick={handleCleanBoard}>
+          {/* TODO i18n */ "clear"}
         </Button>
       </Box>
       {saveFullPath && (
@@ -256,20 +261,63 @@ export const UI: React.FC = () => {
   }
   window.onload = async () => {
     const App: React.FC = await (async () => {
-      const theme = createTheme();
+      const vscodeThemeVar = (name: string) => {
+        const dashedName = name
+          .split(/\./)
+          .map((word) => word.replace(/(?<=[a-z])[A-Z]/g, (char) => `-${char.toLowerCase()}`))
+          .join("-");
+        const varName = `--vscode-${dashedName}`;
+        const varValue = document.documentElement.style.getPropertyValue(varName);
+        if (!varValue) {
+          console.warn(`css var ${varName} not found.`);
+        }
+        return varValue || undefined;
+      };
+      const vscodeColor = (name: string): PaletteColorOptions | undefined => {
+        const main = vscodeThemeVar(name);
+        return main
+          ? {
+              main: main,
+            }
+          : undefined;
+      };
+
       const message$ = fromEvent(window, "message").pipe(
         filter((e): e is MessageEvent => e instanceof MessageEvent),
         map((e): ExtensionMessage => e.data)
       );
       const configuration$ = message$.pipe(mergeMap((m) => (m.type === "configuration" ? of(m.data) : EMPTY)));
+      const defaultTheme = createTheme();
+      const defaultPalette = defaultTheme.palette;
+      const theme$ = message$.pipe(
+        mergeMap((m) => (m.type === "theme" ? of(m.data) : EMPTY)),
+        map((theme) =>
+          createTheme({
+            palette: {
+              mode: theme === ThemeType.Dark || theme === ThemeType.HighContrast ? "dark" : "light",
+              primary: vscodeColor("button.background") ?? defaultPalette.primary,
+              secondary: vscodeColor("button.secondaryBackground") ?? defaultPalette.secondary,
+              divider: vscodeThemeVar("focusBorder") ?? defaultPalette.divider,
+              text: {
+                primary: vscodeThemeVar("foreground") ?? defaultPalette.text.primary,
+                secondary: vscodeThemeVar("descriptionForeground") ?? defaultPalette.text.secondary,
+                disabled: vscodeThemeVar("disabledForeground") ?? defaultPalette.text.disabled,
+              },
+            },
+          })
+        ),
+      );
       sendMessage({ type: "fetch-all", data: void 0 });
       const initConfig = await firstValueFrom(configuration$);
+      const initTheme = await firstValueFrom(theme$);
       return () => {
         const messageContext = React.useRef({ message$ });
         const [configuration, setConfiguration] = React.useState(initConfig);
+        const [theme, setTheme] = React.useState(initTheme);
         React.useEffect(() => {
           const { destroy, destroy$ } = useDestroy();
           configuration$.pipe(takeUntil(destroy$)).subscribe(setConfiguration);
+          theme$.pipe(takeUntil(destroy$)).subscribe(setTheme);
           return destroy;
         }, []);
         return (

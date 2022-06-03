@@ -24,6 +24,7 @@ import {
   WebviewMessage,
   useDestroy,
   ImageLinkFormat,
+  ThemeType,
 } from "./shared";
 import { die } from "taio/build/utils/internal/exceptions";
 import path from "path";
@@ -52,6 +53,25 @@ const useConfiguration = (context: vscode.ExtensionContext): Observable<Extensio
   context.subscriptions.push(disposable);
   notifyConfig();
   return configuration$;
+};
+
+const useTheme = (context: vscode.ExtensionContext): Observable<ThemeType> => {
+  const mapping: Record<vscode.ColorThemeKind, ThemeType> = {
+    [vscode.ColorThemeKind.Dark]: ThemeType.Dark,
+    [vscode.ColorThemeKind.HighContrast]: ThemeType.HighContrast,
+    [vscode.ColorThemeKind.HighContrastLight]: ThemeType.HighContrastLight,
+    [vscode.ColorThemeKind.Light]: ThemeType.Light,
+  };
+  const theme$ = new ReplaySubject<ThemeType>(1);
+  const notifyTheme = (theme: vscode.ColorTheme) => {
+    theme$.next(mapping[theme.kind]);
+  };
+  const disposable = vscode.window.onDidChangeActiveColorTheme((e) => {
+    notifyTheme(e);
+  });
+  context.subscriptions.push(disposable);
+  notifyTheme(vscode.window.activeColorTheme);
+  return theme$;
 };
 
 const useLastActiveTextEditor = (context: vscode.ExtensionContext): Observable<vscode.TextEditor> => {
@@ -119,6 +139,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
   const extensionDestroy$ = useExtensionDestroy(context);
   const configuration$ = useConfiguration(context);
+  const theme$ = useTheme(context);
   const editor$ = useLastActiveTextEditor(context);
   //#region webview
   const showWebview$ = new Subject<boolean>();
@@ -136,13 +157,23 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     //#region  event handlers
+    const fetchAll$ = webviewMessage$.pipe(filter((m) => m.type === "fetch-all"));
     // configuration
-    combineLatest([configuration$, webviewMessage$.pipe(filter((m) => m.type === "fetch-all"))])
+    combineLatest([configuration$, fetchAll$])
       .pipe(takeUntil(destroy$))
       .subscribe(([configuration]) => {
         sendMessage({
           type: "configuration",
           data: configuration,
+        });
+      });
+    // theme
+    combineLatest([theme$, fetchAll$])
+      .pipe(takeUntil(destroy$))
+      .subscribe(([theme]) => {
+        sendMessage({
+          type: "theme",
+          data: theme,
         });
       });
     // save image

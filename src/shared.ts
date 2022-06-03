@@ -48,8 +48,16 @@ export const defaultConfiguration: ExtensionConfiguration = {
   linkFormat: ImageLinkFormat.Auto,
   saveDir: "assets",
 };
+export enum ThemeType {
+  Light = "light",
+  Dark = "dark",
+  HighContrast = "high-contrast",
+  HighContrastLight = "high-contrast-light",
+}
+
 interface ExtensionMessages {
   configuration: ExtensionConfiguration;
+  theme: ThemeType;
 }
 
 export type ExtensionMessage = MessageOf<ExtensionMessages>;
